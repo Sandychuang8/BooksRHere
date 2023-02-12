@@ -1,12 +1,9 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
-using System.Text.RegularExpressions;
 using System.Text;
 using BooksRHere.Objects;
 using Couchbase.Lite;
-using WilderMinds.MetaWeblog;
-using System.Runtime.Serialization.Formatters.Binary;
 
 namespace BooksRHere.Models
 {
@@ -39,13 +36,13 @@ namespace BooksRHere.Models
 
         public bool IsPublished { get; set; } = true;
 
-        public DateTimeOffset LastModified_DateTimeOffset { get; set; } = DateTime.UtcNow;
+        public long LastModifiedTicks { get; set; } = DateTime.UtcNow.Ticks;
 
-        public DateTime LastModified => LastModified_DateTimeOffset.UtcDateTime;
+        public DateTime LastModified => new DateTime(LastModifiedTicks);
 
-        public DateTimeOffset PubDate_DateTimeOffset { get; set; } = DateTime.UtcNow;
+        public long PubDateTicks { get; set; } = DateTime.UtcNow.Ticks;
 
-        public DateTime PubDate => PubDate_DateTimeOffset.UtcDateTime;
+        public DateTime PubDate => new DateTime(PubDateTicks);
 
         [DisplayFormat(ConvertEmptyStringToNull = false)]
         public string Slug { get; set; } = string.Empty;

@@ -24,9 +24,9 @@ namespace BooksRHere.Models
 
         public bool IsAdmin { get; set; } = false;
 
-        public DateTimeOffset PubDate_DateTimeOffset { get; set; } = DateTime.UtcNow;
+        public long PubDateTicks { get; set; } = DateTime.UtcNow.Ticks;
 
-        public DateTime PubDate => PubDate_DateTimeOffset.UtcDateTime;
+        public DateTime PubDate => new DateTime(PubDateTicks);
 
         [SuppressMessage(
             "Security",

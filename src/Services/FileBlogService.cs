@@ -1,4 +1,6 @@
-﻿using System.Diagnostics.CodeAnalysis;
+﻿using BooksRHere.Models;
+using Microsoft.AspNetCore.Mvc;
+using System.Diagnostics.CodeAnalysis;
 using Post = BooksRHere.Models.Post;
 
 namespace BooksRHere.Services
@@ -21,7 +23,7 @@ namespace BooksRHere.Services
             _postDataStore = postDataStore;
             
             this._contextAccessor = contextAccessor;
-            this.LoadPosts();
+            this.LoadPosts(true);
         }
 
         [SuppressMessage(
@@ -75,6 +77,7 @@ namespace BooksRHere.Services
         /// <remarks>Overload for getPosts method to retrieve all posts.</remarks>
         public virtual IAsyncEnumerable<Post> GetPosts()
         {
+            LoadPosts();
             return _cache
                 .Where(p => p.PubDate <= DateTime.UtcNow && (p.IsPublished || IsAdmin()))
                 .ToAsyncEnumerable();
@@ -111,24 +114,42 @@ namespace BooksRHere.Services
 
         public async Task<bool> DeletePost(Post post)
         {
-            return await _postDataStore.DeleteItemAsync(post.ID);
+            var res = await _postDataStore.DeleteItemAsync(post.ID);
+            if (res) await LoadPosts();
+            return res;
         }
 
         public async Task<bool> SavePost(Post post)
         {
-            post.LastModified_DateTimeOffset = DateTime.UtcNow;
-            return await _postDataStore.AddItemAsync(post);
+            post.LastModifiedTicks = DateTime.UtcNow.Ticks;
+            var res = await _postDataStore.AddItemAsync(post);
+            if (res) await LoadPosts();
+            return res;
         }
 
         [SuppressMessage(
             "Globalization",
             "CA1308:Normalize strings to uppercase",
             Justification = "The slug should be lower case.")]
-        private async void LoadPosts()
-        {
-            _cache = await _postDataStore.GetItemsAsync() as List<Post>;
+        private async Task LoadPosts(bool forceRefresh = false) 
+        { 
+            _cache = _postDataStore.GetItemsAsync(forceRefresh: forceRefresh).Result as List<Post>;
         }
 
         protected bool IsAdmin() => this._contextAccessor.HttpContext?.User?.Identity.IsAuthenticated == true;
+
+        public async Task<bool> AddComment(string postId, Models.Comment comment)
+        {
+            await GetPostById(postId).ContinueWith(x => x.Result?.Comments.Insert(0, comment));
+            await LoadPosts(true);
+            return await Task.FromResult(true);
+        }
+
+        public async Task<bool> DeleteComment(string postId, Models.Comment comment)
+        {
+            await GetPostById(postId).ContinueWith(x => x.Result?.Comments.Remove(comment));
+            await LoadPosts(true);
+            return await Task.FromResult(true);
+        }
     }
 }

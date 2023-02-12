@@ -1,4 +1,5 @@
 ﻿using BooksRHere.Models;
+using Microsoft.AspNetCore.Mvc;
 
 namespace BooksRHere.Services
 {
@@ -23,5 +24,9 @@ namespace BooksRHere.Services
         IAsyncEnumerable<Post> GetPostsByCategory(string category);
 
         IAsyncEnumerable<Post> GetPostsByTag(string tag);
+
+        Task<bool> AddComment(string postId, Comment comment);
+
+        Task<bool> DeleteComment(string postId, Comment comment);
     }
 }

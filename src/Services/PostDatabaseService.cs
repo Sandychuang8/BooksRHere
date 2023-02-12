@@ -1,6 +1,7 @@
 ﻿using BooksRHere.Models;
 using Couchbase.Lite;
 using Couchbase.Lite.Query;
+using WilderMinds.MetaWeblog;
 using Post = BooksRHere.Models.Post;
 
 namespace BooksRHere.Services
@@ -18,7 +19,7 @@ namespace BooksRHere.Services
             var q = QueryBuilder.Select(SelectResult.Expression(Meta.ID), SelectResult.All())
                 .From(DataSource.Database(_db))
                 .Where(Expression.Property("Title").NotEqualTo(Expression.Value(null)))
-                .OrderBy(Ordering.Property("PubDate"));
+                .OrderBy(Ordering.Property("PubDate").Descending());
 
             var allResult = q.Execute().AllResults();
             foreach (var res in allResult)
@@ -31,8 +32,8 @@ namespace BooksRHere.Services
                     Excerpt = p.GetString("Excerpt"),
                     ContentBlob = p.GetBlob("Content"),
                     Slug = p.GetString("Slug"),
-                    PubDate_DateTimeOffset = p.GetDate("PubDate"),
-                    LastModified_DateTimeOffset = p.GetDate("LastModified"),
+                    PubDateTicks = p.GetLong("PubDate"),
+                    LastModifiedTicks = p.GetLong("LastModified"),
                     IsPublished = p.GetBoolean("IsPublished"),
                 };
 
@@ -61,14 +62,13 @@ namespace BooksRHere.Services
             doc.SetString("Excerpt", post.Excerpt);
             doc.SetBlob("Content", post.ContentBlob);
             doc.SetBoolean("IsPublished", post.IsPublished);
-            doc.SetDate("PubDate", post.PubDate_DateTimeOffset);
-            doc.SetDate("LastModified", post.LastModified_DateTimeOffset);
-
+            doc.SetLong("PubDate", post.PubDateTicks);
+            doc.SetLong("LastModified", post.LastModifiedTicks);
             doc.SetArray("Categories", new MutableArrayObject(post.Categories.ToArray()));
             doc.SetArray("Tags", new MutableArrayObject(post.Tags.ToArray()));
 
             _db.Save(doc);
-            _items.Add(post);
+            _items.Insert(0, post);
 
             return await Task.FromResult(true);
         }
@@ -95,11 +95,19 @@ namespace BooksRHere.Services
 
         public async Task<Post> GetItemAsync(string id)
         {
-            return await Task.FromResult(_items.FirstOrDefault(s => s.ID == id));
+            var post = _items.FirstOrDefault(s => s.ID == id);
+            post.Comments = _commentDataStore.GetItemsAsync(post.ID).Result as IList<Comment>;
+            return await Task.FromResult(post);
         }
 
         public async Task<IEnumerable<Post>> GetItemsAsync(string id = null, bool forceRefresh = false)
         {
+            if (forceRefresh) {
+                foreach (var i in _items) {
+                    i.Comments = await _commentDataStore.GetItemsAsync(i.ID) as IList<Comment>;
+                }
+            }
+
             return await Task.FromResult(_items);
         }
 
@@ -108,9 +116,10 @@ namespace BooksRHere.Services
             var oldItem = _items.FirstOrDefault(s => s.ID == item.ID);
             if (oldItem != null)
             {
-                _items.Remove(oldItem);
-                await DeleteItemAsync(item.ID);
-                await AddItemAsync(item);
+                int index = _items.IndexOf(oldItem);
+
+                if (index != -1)
+                    _items[index] = item;
             }
 
             return await Task.FromResult(true);

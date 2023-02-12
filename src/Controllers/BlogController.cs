@@ -101,8 +101,11 @@ namespace BooksRHere.Controllers
             // posted by a spam robot
             if (!this.Request.Form.ContainsKey("website"))
             {
-                post.Comments.Add(comment);
-                await _commentDataStore.AddItemAsync(comment).ConfigureAwait(false);
+                var res = await _commentDataStore.AddItemAsync(comment).ConfigureAwait(false);
+                if (res)
+                {
+                    await this.blog.AddComment(postId, comment);
+                }
             }
 
             return this.Redirect($"{post.GetEncodedLink()}#{comment.ID}");
@@ -126,8 +129,8 @@ namespace BooksRHere.Controllers
                 return this.NotFound();
             }
 
-            post.Comments.Remove(comment);
-            await _commentDataStore.DeleteItemAsync(commentId).ConfigureAwait(false);
+            var res = await _commentDataStore.DeleteItemAsync(commentId).ConfigureAwait(false);
+            if(res) await this.blog.DeleteComment(postId, comment);
 
             return this.Redirect($"{post.GetEncodedLink()}#comments");
         }

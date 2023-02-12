@@ -1,13 +1,14 @@
 ﻿using BooksRHere.Models;
 using Couchbase.Lite;
 using Couchbase.Lite.Query;
+using WilderMinds.MetaWeblog;
 
 namespace BooksRHere.Services
 {
     public class CommentDatabaseService : IDatabaseService<Comment>
     {
         private readonly Database _db = Program.Db;
-        private IList<Comment> _items;
+        private IList<Comment> _items = new List<Comment>();
 
         public async Task<bool> AddItemAsync(Comment comment)
         {
@@ -22,10 +23,10 @@ namespace BooksRHere.Services
             doc.SetString("Email", comment.Email);
             doc.SetString("PostID", comment.PostID);
             doc.SetBoolean("IsAdmin", comment.IsAdmin);
-            doc.SetDate("PubDate", comment.PubDate_DateTimeOffset);
+            doc.SetLong("PubDate", comment.PubDateTicks);
 
             _db.Save(doc);
-            _items.Add(comment);
+            _items.Insert(0, comment);
 
             return await Task.FromResult(true);
         }
@@ -61,7 +62,7 @@ namespace BooksRHere.Services
             var q = QueryBuilder.Select(SelectResult.Expression(Meta.ID), SelectResult.All())
                 .From(DataSource.Database(_db))
                 .Where(Expression.Property("PostID").EqualTo(Expression.String(postID)))
-                .OrderBy(Ordering.Property("PubDate"));
+                .OrderBy(Ordering.Property("PubDate").Descending());
 
             var allResult = q.Execute().AllResults();
             foreach (var res in allResult)
@@ -74,7 +75,7 @@ namespace BooksRHere.Services
                     Email = c.GetString("Email"),
                     Content = c.GetString("Content"),
                     PostID = c.GetString("PostID"),
-                    PubDate_DateTimeOffset = c.GetDate("PubDate"),
+                    PubDateTicks = c.GetLong("PubDate"),
                     IsAdmin = c.GetBoolean("IsAdmin"),
                 };
 
@@ -89,9 +90,10 @@ namespace BooksRHere.Services
             var oldItem = _items.FirstOrDefault(s => s.ID == item.ID);
             if (oldItem != null)
             {
-                _items.Remove(oldItem);
-                await DeleteItemAsync(item.ID);
-                await AddItemAsync(item);
+                int index = _items.IndexOf(oldItem);
+
+                if (index != -1)
+                    _items[index] = item;
             }
 
             return await Task.FromResult(true);

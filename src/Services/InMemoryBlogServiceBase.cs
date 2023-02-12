@@ -105,5 +105,9 @@ namespace BooksRHere.Services
         protected void SortCache() => this.Cache.Sort((p1, p2) => p2.PubDate.CompareTo(p1.PubDate));
 
         public abstract Task SaveComments(Comment comment, string postId);
+
+        public abstract Task<bool> AddComment(string postId, Comment comment);
+
+        public abstract Task<bool> DeleteComment(string postId, Comment comment);
     }
 }

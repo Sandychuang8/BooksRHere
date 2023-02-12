@@ -64,7 +64,7 @@ namespace BooksRHere.Services
 
             if (post.dateCreated != DateTime.MinValue)
             {
-                newPost.PubDate_DateTimeOffset = new DateTimeOffset(post.dateCreated);
+                newPost.PubDateTicks = post.dateCreated.Ticks;
             }
 
             await this.blog.SavePost(newPost).ConfigureAwait(false);
@@ -123,7 +123,7 @@ namespace BooksRHere.Services
 
             if (post.dateCreated != DateTime.MinValue)
             {
-                existing.PubDate_DateTimeOffset = new DateTimeOffset(post.dateCreated);
+                existing.PubDateTicks = post.dateCreated.Ticks;
             }
 
             await this.blog.SavePost(existing).ConfigureAwait(false);
